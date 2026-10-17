@@ -1,6 +1,7 @@
+import cv2
 import discord
 from discord.ext import commands, tasks
-from logic import DatabaseManager, hide_img
+from logic import DatabaseManager, hide_img, create_collage
 from config import TOKEN, DATABASE
 import os
 
@@ -20,18 +21,18 @@ async def start(ctx):
         await ctx.send("Kamu sudah terdaftar!")
     else:
         manager.add_user(user_id, ctx.author.name)
-        await ctx.send("Hai! Selamat datang! Kamu telah berhasil terdaftar! Kamu akan menerima gambar baru secara berkala, dan kamu memiliki kesempatan untuk mendapatkannya! Klik tombol 'Ambil!' untuk klaim!")
+        await ctx.send("Hai! Selamat datang! Kamu telah berhasil terdaftar! Kamu akan menerima gambar baru secara berkala, dan kamu memiliki kesempatan untuk mendapatkannya dengan mengklik tombol 'Ambil!'")
 
 @tasks.loop(minutes=1)
 async def send_message():
     users = manager.get_users()
     if not users:
         return
-
+    
     try:
         prize_data = manager.get_random_prize()
     except IndexError:
-        return # Kalau prize habis
+        return 
 
     prize_id, img = prize_data[0], prize_data[1]
     hide_img(img)
@@ -66,6 +67,36 @@ async def rating(ctx):
     formatted_res = '\n'.join(formatted_res)
     final_res = f'|USER_NAME    |COUNT_PRIZE|\n{"_"*26}\n' + formatted_res
     await ctx.send(f"```\n{final_res}\n```")
+
+@bot.command(name="score")
+async def get_my_score(ctx):
+    user_id = ctx.author.id
+
+    info = manager.get_winners_img(user_id)
+    prizes = [x[0] for x in info]
+
+    if not os.path.exists('img'):
+        await ctx.send("Folder 'img' tidak ditemukan.")
+        return
+        
+    image_paths = os.listdir('img')
+
+    image_paths = [f'img/{x}' if x in prizes else f'hidden_img/{x}' for x in image_paths]
+
+    collage = create_collage(image_paths)
+    
+    if collage is not None:
+        collage_path = f'collage_{user_id}.png'
+        cv2.imwrite(collage_path, collage)
+        
+        with open(collage_path, 'rb') as f:
+            file = discord.File(f)
+            await ctx.send(content="Nih kolase pencapaian gambar kamu! Yang udah dibuka berarti menang, yang masih blur/pixelated berarti belum didapat.", file=file)
+
+        if os.path.exists(collage_path):
+            os.remove(collage_path)
+    else:
+        await ctx.send("Gagal membuat kolase karena gambar tidak tersedia.")
 
 @bot.event
 async def on_interaction(interaction):

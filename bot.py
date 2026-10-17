@@ -1,9 +1,9 @@
-import cv2
 import discord
 from discord.ext import commands, tasks
 from logic import DatabaseManager, hide_img, create_collage
 from config import TOKEN, DATABASE
 import os
+import cv2
 
 intents = discord.Intents.default()
 intents.messages = True
@@ -80,7 +80,6 @@ async def get_my_score(ctx):
         return
         
     image_paths = os.listdir('img')
-
     image_paths = [f'img/{x}' if x in prizes else f'hidden_img/{x}' for x in image_paths]
 
     collage = create_collage(image_paths)
@@ -91,7 +90,7 @@ async def get_my_score(ctx):
         
         with open(collage_path, 'rb') as f:
             file = discord.File(f)
-            await ctx.send(content="Nih kolase pencapaian gambar kamu! Yang udah dibuka berarti menang, yang masih blur/pixelated berarti belum didapat.", file=file)
+            await ctx.send(content="Nih kolase pencapaian gambar kamu! Yang udah dibuka berarti menang, yang masih pixelated berarti belum didapat.", file=file)
 
         if os.path.exists(collage_path):
             os.remove(collage_path)
